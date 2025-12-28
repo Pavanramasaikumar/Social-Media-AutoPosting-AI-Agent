@@ -1,0 +1,215 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9,
+              "triggerAtMinute": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1888,
+        352
+      ],
+      "id": "3639e0a5-0ed1-4ce4-a473-91baa6c643fe",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c51e5895-e0ec-4e0e-800c-d94e6e0a646a",
+              "name": "title",
+              "value": "={{ $('AI Agent').item.json.output.title }}",
+              "type": "string"
+            },
+            {
+              "id": "e63adc38-023c-4970-a3e2-15bbfcdf90d7",
+              "name": "summary",
+              "value": "={{ $('AI Agent').item.json.output.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "340b2a67-111f-47d6-911f-17383e34d0a3",
+              "name": "hashtags",
+              "value": "={{ $('AI Agent').item.json.output.hashtags }}",
+              "type": "string"
+            },
+            {
+              "id": "3d909f09-e070-4ec5-a24a-1eaba3c0a92b",
+              "name": "node",
+              "value": "17841478238181552",
+              "type": "string"
+            },
+            {
+              "id": "f08bd59b-013d-4b5f-ad26-a46300fd9678",
+              "name": "url",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -544,
+        352
+      ],
+      "id": "3fd07b3e-87e1-4e2a-b835-917af1e67e8e",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "={{ $json.node }}",
+        "edge": "media",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "image_url",
+                "value": "={{ $json.url }}"
+              },
+              {
+                "name": "caption",
+                "value": "={{ $json.title }}\n\n{{ $json.summary }}\n\n{{ $json.hashtags }}"
+              },
+              {
+                "name": "node",
+                "value": "={{ $json.node }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "bcd364ea-6778-4953-9eb9-6c16dd13076e",
+      "name": "Facebook Graph API",
+      "retryOnFail": false,
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpRequestMethod": "POST",
+        "graphApiVersion": "v22.0",
+        "node": "={{ $('Edit Fields').item.json.node }}",
+        "edge": "media_publish",
+        "options": {
+          "queryParameters": {
+            "parameter": [
+              {
+                "name": "image_url",
+                "value": "={{ $('Edit Fields').item.json.url }}"
+              },
+              {
+                "name": "caption",
+                "value": "={{ $('Edit Fields').item.json.title }}\n\n{{ $('Edit Fields').item.json.summary }}\n\n{{ $('Edit Fields').item.json.hashtags }}"
+              },
+              {
+                "name": "creation_id",
+                "value": "={{ $json.id }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.facebookGraphApi",
+      "typeVersion": 1,
+      "position": [
+        288,
+        0
+      ],
+      "id": "eefafa87-f986-431a-96b0-3b03594b1c0a",
+      "name": "Facebook Graph API1",
+      "retryOnFail": true,
+      "credentials": {
+        "facebookGraphApi": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.articles[0] }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are an AI news summarizer and social media content generator.\n\nInput:{{ $json.articles[0].description }}\n\nTasks:\n1. Generate a concise factual title (max 12 words).\n2. Generate a short factual summary (30–60 words).\n3. Generate a short AI-friendly image prompt based on the article content. \n   - The image prompt should describe the main scene or concept visually. \n   - Use it directly in AI image generators like DALL·E, Stable Diffusion, or Gemini Image.\n4. Generate 3–7 relevant hashtags based on the article content.\n\nOutput Rules:\n- Output ONLY a JSON object with keys: \"title\", \"summary\", \"imagePrompt\", \"hashtags\".\n- Do NOT include explanations, markdown, or extra text.\n- Ensure content is factual, concise, and professional.\n- The `imagePrompt` field must always be filled with a descriptive visual prompt.\n- Hashtags should start with # and be relevant."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -1184,
+        352
+      ],
+      "id": "81a2a7d9-73cb-47e9-a91d-dc48b2b9e3c1",
+      "name": "AI Agent",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 3000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.output.summary }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 2,
+      "position": [
+        384,
+        448
+      ],
+      "id": "4a1f5fad-e3cc-469b-9cb8-0781346bd7f3",
+      "name": "Create Tweet",
+      "credentials": {
+        "twitterOAuth2Api": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=https://newsapi.org/v2/everything?q=AI&language=en&sortBy=publishedAt&sources=bbc-news,reuters,associated-press,axios,the-verge&pageSize=1&apiKey="
+      },
+      "id": "067fe736-16f3-4f30-b48e-d829acf97b75",
+      "name": "Fetch Drone News",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        -1568,
+        352
+      ]
+    }
+  ],
+  "connections": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  }
+}
